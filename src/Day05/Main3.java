@@ -5,6 +5,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 
 public class Main3 {
 
@@ -20,7 +21,10 @@ public class Main3 {
 
         inputString = String.join("\n", inputList);
 
+        long t0 = System.nanoTime();
         part2();
+        double runTime = (System.nanoTime() - t0) / 1e9;
+        System.out.println("Runtime: " + runTime + "s");
     }
 
     public static void part2() {
@@ -36,120 +40,120 @@ public class Main3 {
     }
 
     public static void solve(String seeds, String[] parsedCategories) {
-        long testSeed = 0;
-        while (true) {
-            long seed = testSeed;
-            for (int i = parsedCategories.length - 1; i >= 0; i--) {
-                String[] mappings = parsedCategories[i].split("\n");
-                seed = reverseTransform(seed, mappings);
-            }
-            if (withinRange(seed, seeds.split(" "))) {
-                System.out.println(testSeed);
-                return;
-            }
-            testSeed++;
-            if (testSeed % 1000 == 0) {
-                System.out.println(testSeed);
-            }
+        ArrayList<Range> ranges = toRanges(seeds.split(" "));
+        for (String mappings : parsedCategories) {
+            ranges = transformRange(ranges, mappings.split("\n"));
         }
+        System.out.println(findMin(ranges));
     }
 
-    public static boolean withinRange(long seed, String[] seeds) {
+    public static ArrayList<Range> toRanges(String[] seeds) {
+        ArrayList<Range> ranges = new ArrayList<>();
         for (int i = 0; i < seeds.length; i += 2) {
             long start = Long.parseLong(seeds[i]), range = Long.parseLong(seeds[i + 1]);
-            if (start <= seed && seed <= start + range - 1) {
-                return true;
-            }
+            ranges.add(new Range(start, start + range - 1));
         }
-        return false;
+        return ranges;
     }
 
-    public static long reverseTransform(long seed, String[] mappings) {
-        for (String mapping : mappings) {
-            long end = Long.parseLong(mapping.split(" ")[0]);
-            long start = Long.parseLong(mapping.split(" ")[1]);
-            long range = Long.parseLong(mapping.split(" ")[2]);
-
-            if (seed >= end && seed <= end + range - 1) {
-                return seed - end + start;
-            }
+    public static long findMin(ArrayList<Range> ranges) {
+        long min = 9999999999999L;
+        for (Range range : ranges) {
+            min = Math.min(range.s, min);
         }
-        return seed;
+        return min;
+    }
+
+    public static ArrayList<Range> transformRange(ArrayList<Range> ranges, String[] mappings) {
+        ArrayList<Range> rangesCopy = new ArrayList<>(ranges);
+
+        ArrayList<Range> transformed = new ArrayList<>();
+
+        for (String mapping : mappings) {
+            ArrayList<Range> temp = new ArrayList<>();
+
+            Transform transform = new Transform(mapping);
+            Range toRemove = transform.getInputRange();
+
+            // Range to be transformed
+            for (Range range : rangesCopy) {
+                // No overlap
+                if (range.e < toRemove.s || toRemove.e < range.s) {
+                    temp.add(range);
+                }
+
+                // Fully transformed
+                // [        (remove)              ]
+                //         [ (our range)   ]
+                else if (toRemove.s <= range.s && range.e <= toRemove.e) {
+                    transformed.add(transform.transformRange(range));
+                }
+
+                // Fully contained (without touching the side)
+                // [       (our range)      ]
+                //        [ (remove)   ]
+                else if (range.s < toRemove.s && toRemove.e < range.e) {
+                    // Slice into three parts;
+                    temp.add(new Range(range.s, toRemove.s - 1));
+                    temp.add(new Range(toRemove.e + 1, range.e));
+                    transformed.add(transform.transformRange(new Range(toRemove.s, toRemove.e)));
+                }
+
+                // Partially contained
+                // [   (our range)   ]
+                //            [    (remove)   ]
+                else if (range.e <= toRemove.e) {
+                    temp.add(new Range(range.s, toRemove.s - 1));
+                    transformed.add(transform.transformRange(new Range(toRemove.s, range.e)));
+                }
+
+                //             [   (our range)   ]
+                //    [    (remove)   ]
+                else {
+                    temp.add(new Range(toRemove.e + 1, range.e));
+                    transformed.add(transform.transformRange(new Range(range.s, toRemove.e)));
+                }
+
+            }
+            rangesCopy = temp;
+        }
+
+        rangesCopy.addAll(transformed);
+        return rangesCopy;
     }
 }
 
 class Range {
-    public long start;
-    public long end;
+    public long s;
+    public long e;
 
     public Range(long start, long end) {
-        this.start = start;
-        this.end = end;
+        this.s = start;
+        this.e = end;
     }
 
-    public static Ranges union(Range r1, Range r2) {
-        if (r1.end < r2.start || r2.start < r1.end) {
-            ArrayList<Range> ranges = new ArrayList<>(Arrays.asList(r1, r2));
-            return (new Ranges(ranges));
-        }
-
-        Range newRange = new Range(Math.min(r1.start, r2.start), Math.max(r1.end, r2.end));
-        ArrayList<Range> ranges = new ArrayList<>();
-        ranges.add(newRange);
-        return new Ranges(ranges);
+    @Override
+    public String toString() {
+        return String.format("[%s, %s]", s, e);
     }
-
-    public static Range intersection(Range r1, Range r2) {
-        if (r1.end < r2.start || r2.start < r1.end) {
-            return null;
-        }
-        return new Range(Math.max(r1.start, r2.start), Math.min(r1.end, r2.end));
-    }
-}
-
-class Ranges {
-
-    ArrayList<Range> ranges;
-
-    public Ranges() {
-        ranges = new ArrayList<>();
-    }
-
-    public Ranges(ArrayList<Range> ranges) {
-        this.ranges = ranges;
-    }
-
-    public Ranges getBetween(Range range) {
-
-    }
-
-    public void removeBetween(Range range) {
-
-    }
-
-    public void mergeRanges(Ranges ranges) {
-
-    }
-
-    public void addRange(Range range) {
-
-    }
-
 }
 
 class Transform {
+    public long end;
+    public long start;
+    public long range;
 
-    private int start;
-    private int end;
-    private int range;
-
-    public Transform(int start, int end, int range) {
-
+    public Transform(String mapping) {
+        end = Long.parseLong(mapping.split(" ")[0]);
+        start = Long.parseLong(mapping.split(" ")[1]);
+        range = Long.parseLong(mapping.split(" ")[2]);
     }
 
-    public Ranges transform(Ranges range) {
-        return range;
+    public Range getInputRange() {
+        return new Range(start, start + range - 1);
     }
 
+    public Range transformRange(Range r) {
+        return new Range(r.s + end - start, r.e + end - start);
+    }
 }
-
