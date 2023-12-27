@@ -50,6 +50,7 @@ class Main {
 
         long total = 0;
         for (int i = 0; i < cards.size(); i++) {
+            System.out.println(cards.get(i));
             total += (i + 1) * table.get(cards.get(i));
         }
         System.out.println(total);

@@ -21,10 +21,10 @@ class Main2 {
 
         inputString = String.join("\n", inputList);
 
-        part1();
+        part2();
     }
 
-    public static void part1() {
+    public static void part2() {
         Hashtable<String, Long> table = new Hashtable<>();
         ArrayList<String> cards = new ArrayList<>();
 
@@ -54,6 +54,7 @@ class Main2 {
         }
         System.out.println(total);
     }
+
 
     public static int compare(String hand1, String hand2) {
         int rankA = handToRank(hand1), rankB = handToRank(hand2);
@@ -85,17 +86,27 @@ class Main2 {
         return count;
     }
 
+    static Hashtable<String, Integer> handCache = new Hashtable<>();
+
     public static int handToRank(String hand) {
+        if (handCache.containsKey(hand)) {
+            return handCache.get(hand);
+        }
+
         int jokerCount = countJokers(hand);
+
         if (jokerCount >= 4) {
+            handCache.put(hand, 7);
             return 7;
         }
 
         if (jokerCount == 3) {
             // Full house
             if (fixedHandToRank(hand) >= 5) {
+                handCache.put(hand, 7);
                 return 7;
             }
+            handCache.put(hand, 6);
             return 6;
         }
 
@@ -113,9 +124,12 @@ class Main2 {
                 String newHand = hand.substring(0, jokerPos) + c + hand.substring(jokerPos + 1);
                 best = Math.max(handToRank(newHand), best);
             }
+            handCache.put(hand, best);
             return best;
         } else {
-            return fixedHandToRank(hand);
+            int rank = fixedHandToRank(hand);
+            handCache.put(hand, rank);
+            return rank;
         }
     }
 
